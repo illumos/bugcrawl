@@ -1,5 +1,13 @@
 /*!
  * Implements the guts of bugcrawl.
+ *
+ * Key URLs examples:
+ *
+ * * list endpoint:
+ *   `https://smartos.org/bugview/index.json?offset=0&sort=updated'
+ * * individual issue: `https://smartos.org/bugview/fulljson/MANATEE-400`
+ *
+ * The `sort` value can be `updated`, `created`, or `key`.
  */
 
 use reqwest::Client;
