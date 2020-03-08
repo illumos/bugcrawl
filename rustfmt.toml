@@ -1,0 +1,15 @@
+max_width = 80
+
+# Unstable features
+unstable_features = true
+wrap_comments = true
+format_strings = true
+empty_item_single_line = false
+struct_lit_single_line = false
+overflow_delimited_expr = true
+struct_field_align_threshold = 20
+enum_discrim_align_threshold = 20
+# brace_style = "SameLineWhere"
+brace_style = "AlwaysNextLine"
+blank_lines_upper_bound = 2
+comment_width = 80
