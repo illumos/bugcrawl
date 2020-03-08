@@ -20,7 +20,7 @@ use bugcrawl::BugcrawlParams;
 fn main()
 {
     let params = BugcrawlParams {
-        dbpath: "./bugdb.sqlite",
+        filepath: "./bugdb.files",
         readonly: false,
     };
 

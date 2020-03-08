@@ -8,6 +8,9 @@ edition = "2018"
 
 [dependencies]
 clap = "2.33"
-reqwest = "0.10"
+futures = "0.3.4"
+reqwest = { version = "0.10", features = [ "json" ] }
 rusqlite = "0.21"
+serde = { version = "1.0", features = [ "derive" ] }
 time = "0.1"
+tokio = { version = "0.2", features = [ "full" ] }
