@@ -4,6 +4,9 @@ database](https://smartos.org/bugview).
 Done so far:
 * initial skeleton: executable itself; library interface that initializes a
   sqlite database and HTTP client and exposes an error type
+* current file-based version downloads a file for each issue.  It's not
+  very incremental (although it will avoid downloading the same issue twice --
+  even if it's been updated).
 
 TODO:
 - implement `verify_db()`, which should look for metadata stored in the sqlite
