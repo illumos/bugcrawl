@@ -1,49 +1,55 @@
-This repo holds initial work for `bugcrawl`, a tool to crawl the [SmartOS bugview
-database](https://smartos.org/bugview).
+# bugcrawl
 
-Done so far:
-* initial skeleton: executable itself; library interface that initializes a
-  sqlite database and HTTP client and exposes an error type
-* current file-based version downloads a file for each issue.  It's not
-  very incremental (although it will avoid downloading the same issue twice --
-  even if it's been updated).
+`bugcrawl` is a tool to crawl [bugview](https://smartos.org/bugview), which is a
+publicly accessible view of issues related to Joyent's Manta, Triton, and
+SmartOS projects.
 
-TODO:
-- implement `verify_db()`, which should look for metadata stored in the sqlite
-  database indicating what major version of this tool it was created with.
-  - If the metadata table is not found or the row for the version is not found,
-    proceed with initializing the database.
-- implement database initialization (in this order -- see `verify_db()`)
-  - define a schema for the main table of bugs (i.e., what data should be
-    first-classed; probably at least the ticket id and update time, maybe also
-    the project name, create time, creator, reporter, or assignee
-  - create the bugs table
-  - create the metadata table and insert metadata for create time, version, etc.
-- implement initial state load from database
-  - fetch the most recent update time and load it into the struct
-- implement crawl:
-  - implement fetching the complete list of bugs.  (NOTE: this will have to be
-    different from an incremental crawl because there's no obvious way to do
-    this in reverse order, which means we'll update the most recent first, which
-    means we won't be able to tell next time that we didn't finish.)
-    - fetch a single page
-      - serde type(s) for the results
-    - fetch the next page
-      - update query params for subsequent requests
-    - put it together to fetch all of the items that we need to update
-    - fetch an individual bug's page
-      - define serde type(s)
-      - define database type(s)
-      - fetch URL, parse it, update database
-- put it all together
-  - min time between requests
-- build a tool to render information about a bug
-- bonus (rough priority order):
-  - track all versions of each issue so that we never clobber anything
-  - implement incremental crawl
-  - update database with metadata when we start each crawl.  as we go, update a
-    counter about rows fetched, etc.  update at the end with end time.
-  - implement incremental initial crawl? (can use the above state)
-  - normalize the database better for richer searches:
-    - people associated with tickets in various ways
-    - tickets linked to other tickets
+`bugcrawl` uses the public URLs to list issues, pages through them all, and
+downloads each one to a local file called `bugdb.files/$TICKET.json` where
+`$TICKET` is the JIRA identifier (e.g., `OS-2312`).  If any such file exists
+locally already, it skips that issue.  It doesn't do anything fancier or smarter
+than that.  See "Status" below for more.
+
+
+## Synopsis
+
+You can build and run this tool like any other rust crate with `cargo build`
+and/or `cargo run`.  Currently, the tool takes no arguments and immediately
+starts crawling the public `bugview` database.  Be careful with this!  It's
+single-threaded and pauses between requests to avoid disrupting the server, but
+that doesn't mean it couldn't still cause trouble.
+
+As of 2020-03, there are 6735 issues and they take up about 70MB of space
+locally.  It takes a few hours to crawl the whole database, mostly because of
+the delays between requests to avoid overwhelming the server.
+
+
+## Status
+
+Currently, `bugcrawl` pages through all issues and downloads each one to a local
+file if it's not already present.  That's enough to produce a local copy of the
+currently-public bug database.
+
+It would be useful to do a few more things:
+
+- Render the issues, maybe the same way `bugview` does.  The [Bugview
+  source](https://github.com/joyent/bugview/) is publicly available and it
+  should be possible to rework the files produced by `bugcrawl` to be rendered
+  directly by `bugview` (or something similar).
+- Support correct incremental updates from the public database.  The public
+  database supports querying by last update time, so it would be possible to
+  add a mode to `bugcrawl` to efficiently list changes it didn't already know
+  about and update the local state.  (Today, if you rerun the program, it will
+  fetch newly-created issues, but it won't fetch updates to issues that it
+  already knew about.)
+- Keep track of various versions of issues.  That is, if an update on bugview
+  deleted an issue or modified the synopsis or the like, it would be nice to
+  capture all the previous revisions instead of clobbering the local copy with
+  what's upstream.  This is important for operating as a proper archive.
+
+Other things that would be useful:
+
+- polish around the CLI: arguments for the local path, dry run, delay between
+  requests, etc.
+- supporting a sqlite database (or the like) so that we could query issues by
+  more fields even than bugview supports (e.g., author)
