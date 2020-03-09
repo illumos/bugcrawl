@@ -90,16 +90,22 @@ pub fn bugcrawl(params: BugcrawlParams) -> Result<(), BugcrawlError> {
     let issue_ids = list_issues(&mut bcp)?;
     eprintln!("total issues: {}", issue_ids.len());
     eprintln!("determining which issues we already have");
-    let new_issue_ids = issue_ids.iter().filter(|issue_id| {
-        let newpath = path_for_issue(&bcp, issue_id, false);
-        match std::fs::metadata(&newpath.as_path()) {
-            Err(e) if e.kind() == std::io::ErrorKind::NotFound => true,
-            Ok(_) => false,
-            // XXX Is there a way to propagate this cleanly?
-            Err(e) => panic!("failed to get local metadata for {}: {}",
-                newpath.as_path().display(), e)
-        }
-    }).collect::<Vec<&String>>();
+    let new_issue_ids = issue_ids
+        .iter()
+        .filter(|issue_id| {
+            let newpath = path_for_issue(&bcp, issue_id, false);
+            match std::fs::metadata(&newpath.as_path()) {
+                Err(e) if e.kind() == std::io::ErrorKind::NotFound => true,
+                Ok(_) => false,
+                // XXX Is there a way to propagate this cleanly?
+                Err(e) => panic!(
+                    "failed to get local metadata for {}: {}",
+                    newpath.as_path().display(),
+                    e
+                ),
+            }
+        })
+        .collect::<Vec<&String>>();
     eprintln!("total issues:       {}", issue_ids.len());
     eprintln!("issues to download: {}", new_issue_ids.len());
 
@@ -197,9 +203,8 @@ fn list_issues_page(
     let request = client.get(url).query(&params).build()?;
     let response = make_request(bcp, request)?;
     let runtime = &mut bcp.tokio_runtime;
-    let page: IssueListPage = runtime.block_on(async {
-        response.json().await
-    })?;
+    let page: IssueListPage =
+        runtime.block_on(async { response.json().await })?;
     eprintln!("listed {} of {} total issues", page.offset, page.total);
     std::thread::sleep(Duration::from_millis(BUGVIEW_DELAY_LIST));
     Ok(page)
@@ -210,26 +215,35 @@ fn list_issues_page(
  * store the issue.  If `tmp` is set, return a temporary file name to be used
  * for this issue's content.
  */
-fn path_for_issue(bcp: &Bugcrawl, issue_id: &str, tmp: bool)
-    -> std::path::PathBuf
-{
+fn path_for_issue(
+    bcp: &Bugcrawl,
+    issue_id: &str,
+    tmp: bool,
+) -> std::path::PathBuf {
     let mut newpath = std::path::PathBuf::new();
     newpath.push(&bcp.filepath);
     // XXX sanity-check for invalid characters
-    newpath.push(format!("{}.json{}", issue_id, if tmp { ".tmp" } else { "" }));
+    newpath.push(format!(
+        "{}.json{}",
+        issue_id,
+        if tmp { ".tmp" } else { "" }
+    ));
     newpath
 }
 
 /**
  * Download the contents of the specified issue to the corresponding local file.
  */
-fn download_issue(mut bcp: &mut Bugcrawl, issue_id: &String)
-    -> Result<(), BugcrawlError>
-{
+fn download_issue(
+    mut bcp: &mut Bugcrawl,
+    issue_id: &String,
+) -> Result<(), BugcrawlError> {
     let client = &bcp.bugview_client;
     // XXX check for invalid characters
     let url = reqwest::Url::parse(
-        format!("https://smartos.org/bugview/fulljson/{}", issue_id).as_str()).unwrap();
+        format!("https://smartos.org/bugview/fulljson/{}", issue_id).as_str(),
+    )
+    .unwrap();
     let request = client.get(url).build()?;
     let response = make_request(&mut bcp, request)?;
 
@@ -239,14 +253,16 @@ fn download_issue(mut bcp: &mut Bugcrawl, issue_id: &String)
      * too.
      */
     let runtime = &mut bcp.tokio_runtime;
-    let content = runtime.block_on(async {
-        response.text().await
-    })?;
+    let content = runtime.block_on(async { response.text().await })?;
 
     if content.len() > MAX_ISSUE_LEN {
         return Err(BugcrawlError {
-            message: format!("issue {} was too big ({} bytes, max is {} bytes)",
-                issue_id, content.len(), MAX_ISSUE_LEN)
+            message: format!(
+                "issue {} was too big ({} bytes, max is {} bytes)",
+                issue_id,
+                content.len(),
+                MAX_ISSUE_LEN
+            ),
         });
     }
 
@@ -258,26 +274,23 @@ fn download_issue(mut bcp: &mut Bugcrawl, issue_id: &String)
     Ok(())
 }
 
-fn make_request(bcp: &mut Bugcrawl, request: reqwest::Request)
-    -> Result<reqwest::Response, BugcrawlError>
-{
+fn make_request(
+    bcp: &mut Bugcrawl,
+    request: reqwest::Request,
+) -> Result<reqwest::Response, BugcrawlError> {
     let client = &bcp.bugview_client;
     let runtime = &mut bcp.tokio_runtime;
 
     if DBG_REQ {
         eprintln!("-> {} {}", request.method(), request.url());
     }
-    let response = runtime.block_on(async {
-        client.execute(request).await
-    })?;
+    let response = runtime.block_on(async { client.execute(request).await })?;
     let status = response.status();
     if DBG_REQ {
         eprintln!(
             "<- status {} {}",
             status.as_str(),
-            status
-                .canonical_reason()
-                .unwrap_or("unknown response code")
+            status.canonical_reason().unwrap_or("unknown response code")
         );
     }
 
